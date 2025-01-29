@@ -3,17 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>簡單射擊遊戲</title>
+    <title>手機版射擊遊戲</title>
     <style>
         body { text-align: center; background: #ddd; }
         canvas { background: white; display: block; margin: auto; }
+        .controls { margin-top: 10px; }
+        .button { font-size: 20px; padding: 10px; margin: 5px; }
     </style>
 </head>
 <body>
     <h1>射擊遊戲</h1>
     <canvas id="gameCanvas" width="600" height="800"></canvas>
+
+    <!-- 虛擬按鈕 -->
+    <div class="controls">
+        <button class="button" onclick="moveLeft()">⬅ 左</button>
+        <button class="button" onclick="moveRight()">右 ➡</button>
+        <button class="button" onclick="shoot()">🔫 開火</button>
+    </div>
+    <div class="controls">
+        <button class="button" onclick="changeWeapon('AK-47')">步槍 (AK-47)</button>
+        <button class="button" onclick="changeWeapon('Glock 18')">手槍 (Glock 18)</button>
+        <button class="button" onclick="changeWeapon('AWP')">狙擊槍 (AWP)</button>
+    </div>
+
     <script>
-        // 獲取 Canvas
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
 
@@ -23,46 +37,58 @@
         const enemies = [];
         let score = 0;
         let gameOver = false;
+        let currentWeapon = "AK-47";
+
+        // 武器數據
+        const weapons = {
+            "AK-47": { speed: 7, fireRate: 200 },   // 連發步槍
+            "Glock 18": { speed: 6, fireRate: 400 }, // 半自動手槍
+            "AWP": { speed: 10, fireRate: 1000 }    // 狙擊槍（單發，子彈慢但威力大）
+        };
+
+        let lastShotTime = 0;
 
         // 監聽鍵盤
         const keys = {};
         document.addEventListener("keydown", (e) => keys[e.code] = true);
         document.addEventListener("keyup", (e) => keys[e.code] = false);
 
+        function moveLeft() { if (player.x > 0) player.x -= player.speed; }
+        function moveRight() { if (player.x < canvas.width - player.width) player.x += player.speed; }
+        function shoot() {
+            const now = Date.now();
+            if (now - lastShotTime > weapons[currentWeapon].fireRate) {
+                bullets.push({ x: player.x + 20, y: player.y, width: 10, height: 20, speed: weapons[currentWeapon].speed });
+                lastShotTime = now;
+            }
+        }
+        function changeWeapon(weapon) {
+            currentWeapon = weapon;
+            console.log("切換武器：" + weapon);
+        }
+
         // 更新遊戲狀態
         function update() {
             if (gameOver) return;
 
-            // 玩家移動
-            if (keys["ArrowLeft"] && player.x > 0) player.x -= player.speed;
-            if (keys["ArrowRight"] && player.x < canvas.width - player.width) player.x += player.speed;
-            
-            // 發射子彈
-            if (keys["Space"]) {
-                bullets.push({ x: player.x + 20, y: player.y, width: 10, height: 20, speed: 7 });
-                keys["Space"] = false; // 防止持續發射
-            }
+            if (keys["ArrowLeft"]) moveLeft();
+            if (keys["ArrowRight"]) moveRight();
+            if (keys["Space"]) shoot();
 
-            // 移動子彈
             bullets.forEach((b, i) => {
                 b.y -= b.speed;
                 if (b.y < 0) bullets.splice(i, 1);
             });
 
-            // 生成敵人
             if (Math.random() < 0.02) {
                 enemies.push({ x: Math.random() * (canvas.width - 40), y: 0, width: 40, height: 40, speed: 3 });
             }
 
-            // 移動敵人
             enemies.forEach((e, i) => {
                 e.y += e.speed;
-                if (e.y > canvas.height) {
-                    gameOver = true; // 敵人掉到底部，遊戲結束
-                }
+                if (e.y > canvas.height) gameOver = true;
             });
 
-            // 碰撞檢測
             bullets.forEach((b, bi) => {
                 enemies.forEach((e, ei) => {
                     if (b.x < e.x + e.width && b.x + b.width > e.x &&
@@ -90,6 +116,7 @@
             ctx.fillStyle = "black";
             ctx.font = "20px Arial";
             ctx.fillText(`分數: ${score}`, 10, 30);
+            ctx.fillText(`武器: ${currentWeapon}`, 10, 60);
 
             if (gameOver) {
                 ctx.fillStyle = "red";
